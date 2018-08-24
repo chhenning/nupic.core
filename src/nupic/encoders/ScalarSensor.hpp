@@ -55,12 +55,10 @@ namespace nupic
 
     static Spec* createSpec();
 
-    virtual void getParameterFromBuffer(const std::string& name,
-                                        Int64 index,
-                                        IWriteBuffer& value) override;
-    virtual void setParameterFromBuffer(const std::string& name,
-                                        Int64 index,
-                                        IReadBuffer& value) override;
+    virtual Real64 getParameterReal64(const std::string &name, Int64 index);
+    virtual UInt32 getParameterUInt32(const std::string &name, Int64 index); 
+    virtual bool getParameterBool(const std::string &name, Int64 index); 
+    virtual void setParameterReal64(const std::string &name, Int64 index, Real64 value); 
     virtual void initialize() override;
 
     virtual void serialize(BundleIO& bundle) override;
@@ -72,10 +70,18 @@ namespace nupic
 
     virtual size_t getNodeOutputElementCount(const std::string& outputName) override;
   private:
+    UInt32 n_;
+    UInt32 w_;
+    Real64 resolution_;
+    Real64 radius_;
+    Real64 minValue_;
+    Real64 maxValue_;
+    bool clipInput_;
+    bool periodic_;
     Real64 sensedValue_;
     ScalarEncoderBase* encoder_;
-    const Output* encodedOutput_;
-    const Output* bucketOutput_;
+    Output* encodedOutput_;
+    Output* bucketOutput_;
   };
 }
 

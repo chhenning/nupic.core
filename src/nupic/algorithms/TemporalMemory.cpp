@@ -49,7 +49,7 @@ using namespace nupic;
 using namespace nupic::algorithms::connections;
 using namespace nupic::algorithms::temporal_memory;
 
-static const Permanence EPSILON = 0.000001;
+static const Permanence EPSILON = 0.000001f;
 static const UInt TM_VERSION = 2;
 
 
@@ -377,7 +377,7 @@ static void growSynapses(
   // Pick nActual cells randomly.
   for (UInt32 c = 0; c < nActualWithMax; c++)
   {
-    size_t i = rng.getUInt32(candidates.size());
+    UInt32 i = rng.getUInt32((UInt32)candidates.size());
     connections.createSynapse(segment, candidates[i], initialPermanence);
     candidates.erase(candidates.begin() + i);
   }
@@ -733,7 +733,7 @@ Segment TemporalMemory::createSegment(CellIdx cell)
                          cell, iteration_, maxSegmentsPerCell_);
 }
 
-Int TemporalMemory::columnForCell(CellIdx cell)
+UInt TemporalMemory::columnForCell(const CellIdx cell) const
 {
   _validateCell(cell);
 
@@ -754,7 +754,7 @@ vector<CellIdx> TemporalMemory::cellsForColumn(Int column)
   return cellsInColumn;
 }
 
-UInt TemporalMemory::numberOfCells(void)
+UInt TemporalMemory::numberOfCells(void) const
 {
   return connections.numCells();
 }
@@ -802,7 +802,7 @@ UInt TemporalMemory::numberOfColumns() const
   return numColumns_;
 }
 
-bool TemporalMemory::_validateCell(CellIdx cell)
+bool TemporalMemory::_validateCell(CellIdx cell) const
 {
   if (cell < numberOfCells())
     return true;
@@ -934,7 +934,7 @@ void TemporalMemory::seed_(UInt64 seed)
   rng_ = Random(seed);
 }
 
-UInt TemporalMemory::persistentSize() const
+size_t TemporalMemory::persistentSize() const
 {
   stringstream s;
   s.flags(ios::scientific);
@@ -1010,7 +1010,7 @@ void TemporalMemory::save(ostream& outStream) const
     const CellIdx cell = connections.cellForSegment(segment);
     const vector<Segment>& segments = connections.segmentsForCell(cell);
 
-    SegmentIdx idx = std::distance(
+    SegmentIdx idx = (SegmentIdx)std::distance(
       segments.begin(),
       std::find(segments.begin(), segments.end(), segment));
 
@@ -1026,7 +1026,7 @@ void TemporalMemory::save(ostream& outStream) const
     const CellIdx cell = connections.cellForSegment(segment);
     const vector<Segment>& segments = connections.segmentsForCell(cell);
 
-    SegmentIdx idx = std::distance(
+    SegmentIdx idx = (SegmentIdx)std::distance(
       segments.begin(),
       std::find(segments.begin(), segments.end(), segment));
 

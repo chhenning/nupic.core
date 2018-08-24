@@ -33,7 +33,7 @@
 #include <iomanip>
 #include <vector>
 
-#include <boost/unordered_set.hpp>
+#include <unordered_set>
 
 #include <nupic/math/ArrayAlgo.hpp>
 #include <nupic/math/Math.hpp>
@@ -115,7 +115,7 @@ template <typename UI = nupic::UInt32, typename Real_stor = nupic::Real32,
 class SparseMatrix {
   // TODO find boost config flag to enable ullong as UnsignedInteger
   // BOOST_CLASS_REQUIRE(UI, boost, UnsignedIntegerConcept);
-  BOOST_CLASS_REQUIRE(I, boost, SignedIntegerConcept);
+  // BOOST_CLASS_REQUIRE(I, boost, SignedIntegerConcept);
 
 public:
   typedef UI size_type;              // unsigned integral for sizes
@@ -4673,11 +4673,10 @@ public:
 
     for (InputIterator1 row = row_begin; row != row_end; ++row) {
       size_type numZeros = nZerosInRowOnColumns_(*row, col_begin, col_end);
-      difference_type numNonZeros = (col_end - col_begin) - numZeros;
+      difference_type numNonZeros = (difference_type)((col_end - col_begin) - numZeros);
       size_type numDesiredNewNonZeros =
         (size_type) std::max((difference_type)0,
-                             (difference_type)(numDesiredNonzeros -
-                                               numNonZeros));
+                             (difference_type)(numDesiredNonzeros -  numNonZeros));
       size_type numActualNewNonZeros =
         std::min(numDesiredNewNonZeros, numZeros);
       if (numActualNewNonZeros > 0)
@@ -5418,7 +5417,7 @@ public:
       // check that column indices in strictly increasing order
     }
 
-    boost::unordered_set<size_type> skip(it, end);
+    std::unordered_set<size_type> skip(it, end);
 
     ITERATE_ON_ALL_ROWS {
       size_type k = 0;

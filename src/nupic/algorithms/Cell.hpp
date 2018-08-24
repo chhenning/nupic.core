@@ -25,6 +25,7 @@
 
 #include <vector>
 #include <nupic/types/Types.hpp>
+#include <nupic/types/Serializable.hpp>
 #include <nupic/algorithms/Segment.hpp>
 
 namespace nupic {
@@ -44,7 +45,7 @@ namespace nupic {
        * mismatches in unit testing when comparing the Python TP to the C++ down to the
        * segment level.
        */
-      class Cell
+      class Cell : public Serializable
       {
       private:
         std::vector< Segment >   _segments;     // both 'active' and 'inactive' segments
@@ -61,8 +62,8 @@ namespace nupic {
         UInt nSynapses() const
         {
           UInt n = 0;
-          for (UInt i = 0; i != _segments.size(); ++i)
-            n += _segments[i].size();
+          for (size_t i = 0; i != _segments.size(); ++i)
+            n += (UInt)_segments[i].size();
           return n;
         }
 
@@ -71,7 +72,7 @@ namespace nupic {
          * Returns size of _segments (see nSegments below). If using this to iterate,
          * indices less than size() might contain indices of empty segments.
          */
-        UInt size() const { return _segments.size(); }
+        UInt size() const { return (UInt)_segments.size(); }
 
         //--------------------------------------------------------------------------------
         /**
@@ -81,7 +82,7 @@ namespace nupic {
         UInt nSegments() const
         {
           NTA_ASSERT(_freeSegments.size() <= _segments.size());
-          return _segments.size() - _freeSegments.size();
+          return (UInt)(_segments.size() - _freeSegments.size());
         }
 
         //--------------------------------------------------------------------------------
@@ -112,12 +113,15 @@ namespace nupic {
           return _segments[segIdx];
         }
 
-        //--------------------------------------------------------------------------------
-        Segment& getSegment(UInt segIdx)
-        {
-          NTA_ASSERT(segIdx < _segments.size());
-          return _segments[segIdx];
-        }
+  //----------------------------------------------------------------------
+  bool operator==(const Cell &other) const;
+  inline bool operator!=(const Cell &other) const { return !operator==(other); }
+
+  //--------------------------------------------------------------------------------
+  Segment &getSegment(UInt segIdx) {
+    NTA_ASSERT(segIdx < _segments.size());
+    return _segments[segIdx];
+  }
 
         //--------------------------------------------------------------------------------
         /**
@@ -249,7 +253,7 @@ namespace nupic {
         {
           std::stringstream buff;
           this->save(buff);
-          return buff.str().size();
+          return (UInt)buff.str().size();
         }
 
         //----------------------------------------------------------------------

@@ -57,6 +57,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <sstream>
 
 #include <nupic/algorithms/Svm.hpp>
+#include <nupic/math/StlIo.hpp>     // binary_save
+
 
 namespace nupic {
 namespace algorithms {
@@ -76,7 +78,7 @@ void svm_parameter::print() const {
 }
 
 //------------------------------------------------------------------------------
-int svm_parameter::persistent_size() const {
+size_t svm_parameter::persistent_size() const {
   stringstream b;
   b << kernel << ' ' << probability << ' ' << gamma << ' ' << C << ' ' << eps
     << ' ' << cache_size << ' ' << shrinking << ' ' << weight_label << ' '
@@ -100,7 +102,7 @@ void svm_parameter::load(std::istream &inStream) {
 
 
 //------------------------------------------------------------------------------
-int svm_problem::persistent_size() const {
+size_t svm_problem::persistent_size() const {
   stringstream b;
 
   b << size() << " " << n_dims() << " ";
@@ -144,15 +146,15 @@ void svm_problem::load(std::istream &inStream) {
 }
 
 //------------------------------------------------------------------------------
-int svm_problem01::persistent_size() const {
+size_t svm_problem01::persistent_size() const {
   stringstream b;
   b << size() << " " << n_dims() << " " << threshold_ << " ";
-  int n = b.str().size();
+  size_t n = b.str().size();
 
   n += y_.size() * sizeof(float);
   n += nnz_.size() * sizeof(int);
 
-  for (int i = 0; i != size(); ++i)
+  for (size_t i = 0; i != size(); ++i)
     n += nnz_[i] * sizeof(feature_type);
 
   return n + 1;
@@ -165,7 +167,7 @@ void svm_problem01::save(std::ostream &outStream) const {
   nupic::binary_save(outStream, y_);
   nupic::binary_save(outStream, nnz_);
 
-  for (int i = 0; i < size(); ++i)
+  for (size_t i = 0; i < size(); ++i)
     nupic::binary_save(outStream, x_[i], x_[i] + nnz_[i]);
   outStream << " ";
 }
@@ -250,11 +252,11 @@ void svm_model::print() const {
 }
 
 //------------------------------------------------------------------------------
-int svm_model::persistent_size() const {
+size_t svm_model::persistent_size() const {
   stringstream b;
   b << n_class() << " " << size() << " " << n_dims() << " ";
 
-  int n = b.str().size();
+  size_t n = b.str().size();
 
   n += sv.size() * n_dims() * sizeof(float) + 1;
 

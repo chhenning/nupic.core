@@ -26,7 +26,6 @@
 #ifndef NTA_BUFFER_HPP
 #define NTA_BUFFER_HPP
 
-#include <boost/shared_array.hpp>
 #include <nupic/ntypes/MemStream.hpp>
 #include <nupic/ntypes/ObjectModel.h>
 #include <nupic/ntypes/ObjectModel.hpp>
@@ -98,10 +97,10 @@ namespace nupic
     Int32 read(bool & value) const override;
     Int32 read(bool * value, Size size) const override;
     Int32 readString(
-        NTA_Byte * &value, 
-        NTA_UInt32 &size,
-        NTA_Byte *(*fAlloc)(NTA_UInt32 size)=nullptr,
-        void (*fDealloc)(NTA_Byte *)=nullptr
+        Byte * &value, 
+        UInt32 &size,
+        Byte *(*fAlloc)(UInt32 size)=nullptr,
+        void (*fDealloc)(Byte *)=nullptr
       ) const override;
     
     template <typename T>
@@ -141,7 +140,7 @@ namespace nupic
       }
     }
   private:
-    boost::shared_array<Byte> bytes_;
+    std::shared_ptr<Byte> bytes_;
     mutable IMemStream memStream_;
   };
 

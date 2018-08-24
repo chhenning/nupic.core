@@ -105,18 +105,17 @@ namespace nupic
     // [open: current basic types are bytes/{u}int16/32/64, real32/64, BytePtr. Is this 
     // the right list? Should we have std::string, jsonstd::string?]
     NTA_BasicType    dataType;
-    // 1 = scalar; > 1 = array o fixed sized; 0 = array of unknown size 
-    // TODO: should be size_t? Serialization issues?
+    // 1 = scalar; > 1 = array of fixed sized; 0 = array of unknown size 
     size_t      count; 
     std::string constraints;
     std::string defaultValue; // JSON representation; empty std::string means parameter is required
     AccessMode  accessMode;
-
   };
 
 
-  struct Spec
+  class Spec
   {
+  public:
     // Return a printable string with Spec information
     // TODO: should this be in the base API or layered? In the API right
     // now since we do not build layered libraries. 

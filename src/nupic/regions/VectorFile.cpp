@@ -23,7 +23,7 @@
 /** @file
 * Implementation for VectorFile class
 */
-#include <zlib.h>
+//#include <zlib.h>
 
 #include <cstring> // memset
 #include <cmath>
@@ -37,7 +37,6 @@
 #include <nupic/regions/VectorFile.hpp>
 #include <nupic/utils/Log.hpp>
 #include <nupic/math/Utils.hpp> // For isSystemLittleEndian and utils::swapBytesInPlace.
-#include <nupic/os/FStream.hpp>
 #include <nupic/os/Path.hpp>
 
 using namespace std;
@@ -80,7 +79,7 @@ void VectorFile::clear(bool clearScaling)
 
 //----------------------------------------------------------------------------
 void VectorFile::appendFile(const string &fileName,
-                            NTA_Size expectedElementCount,
+                            Size expectedElementCount,
                             UInt32 fileFormat)
 { 
   bool handled = false;
@@ -102,7 +101,7 @@ void VectorFile::appendFile(const string &fileName,
 
   if(!handled) {
     // Open up the vector file
-    IFStream inFile(fileName.c_str());
+    std::ifstream inFile(fileName.c_str());
     if (!inFile) {
       NTA_THROW << "VectorFile::appendFile - unable to open file: "
         << fileName;
@@ -123,7 +122,7 @@ void VectorFile::appendFile(const string &fileName,
       {
         // Read in space separated text file
         string sLine;
-        NTA_Size elementCount = expectedElementCount;
+        Size elementCount = expectedElementCount;
         if (fileFormat != 2) {
           inFile >> elementCount;
           getline(inFile, sLine);
@@ -163,7 +162,7 @@ void VectorFile::appendFile(const string &fileName,
             inFile >> vectorLabel;
           }
   
-          auto b = new NTA_Real[elementCount];
+          auto b = new Real[elementCount];
           for (Size i= 0; i < elementCount; ++i) {
             inFile >> b[i];
           }
@@ -190,7 +189,8 @@ void VectorFile::appendFile(const string &fileName,
   // Reset scaling only if the vector lengths changed
   if (scaleVector_.size() != expectedElementCount)
   {
-    NTA_INFO << "appendFile - need to reset scale and offset vectors.";
+    if (scaleVector_.size() > 0)
+    NTA_INFO << "appendFile - Vectors read: " << scaleVector_.size() << ". Expected " << expectedElementCount << ". Needed to reset scale and offset vectors.";
     resetScaling((UInt)expectedElementCount);
   }
 }
@@ -200,7 +200,7 @@ void VectorFile::appendFile(const string &fileName,
 // False otherwise. 
 // This is a bit of a hack - if a string contains 13 or 10 it should not count, but
 // we don't support strings in files anyway.
-static bool dosEndings(IFStream &inFile)
+static bool dosEndings(std::istream &inFile)
 {
   bool unixLines = true;
   auto pos = inFile.tellg();
@@ -376,19 +376,47 @@ void VectorFile::saveVectors(ostream &out, Size nColumns, UInt32 fileFormat,
   out.flush();
 }
 
+/**************************** No longer supporting zipped files
 class AutoReleaseFile
 {
 public:
   void * file_;
-  AutoReleaseFile(const string &filename) : file_(ZLib::fopen(filename, "rb"))
+  AutoReleaseFile(const string &filename)
   {
+    file_ = ZLib::fopen(filename, "rb");
     if(!file_) throw runtime_error("Unable to open file '" + filename + "'.");
   }
-  ~AutoReleaseFile() { ::gzclose((gzFile)file_); file_ = nullptr; }
-  void read(void *out, int n)
+  ~AutoReleaseFile() 
+  { 
+    ::gzclose((gzFile)file_); 
+    file_ = nullptr; 
+  }
+  void read(void *out, size_t n)
   {
     int result = gzread((gzFile)file_, out, n);
     if(result < n) throw runtime_error("Failed to read requested bytes from file.");
+  }
+};
+**************************/
+class AutoReleaseFile {
+public:
+  FILE *file_;
+  AutoReleaseFile(const string &filename) {
+    if (Path::getExtension(filename) == ".zip")
+      NTA_THROW << "Reading ZIPed files is no longer supported. " << filename;
+
+    file_ = fopen(filename.c_str(), "rb");
+    if (!file_)
+      throw runtime_error("Unable to open file '" + filename + "'.");
+  }
+  ~AutoReleaseFile() {
+    fclose(file_);
+    file_ = nullptr;
+  }
+  void read(void *out, size_t n) {
+    size_t result = fread(out, 1,n,file_); // Read n bytes from the file.
+    if (result < n)
+      throw runtime_error("Failed to read requested bytes from file.");
   }
 };
 
@@ -476,7 +504,7 @@ void VectorFile::appendFloat32File(const string &filename,
 //    23,24,
 //    23,"42,d",55
 
-void VectorFile::appendCSVFile(IFStream &inFile, Size expectedElements)
+void VectorFile::appendCSVFile(istream &inFile, Size expectedElements)
 {
   // Read in csv file one line at a time. If that line contains any errors, 
   // skip it and move onto the next one.

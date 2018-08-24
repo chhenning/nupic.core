@@ -28,15 +28,16 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <list>
 #include <cstring> // strlen
 
 #include <nupic/engine/Region.hpp>
+#include <nupic/engine/Output.hpp>
 #include <nupic/engine/Spec.hpp>
 #include <nupic/regions/VectorFileSensor.hpp>
 #include <nupic/utils/Log.hpp>
 #include <nupic/utils/StringUtils.hpp>
-//#include <nupic/os/FStream.hpp>
 #include <nupic/ntypes/Value.hpp>
 #include <nupic/ntypes/BundleIO.hpp>
 
@@ -49,30 +50,19 @@ namespace nupic
 VectorFileSensor::VectorFileSensor(const ValueMap& params, Region* region) :
   RegionImpl(region),
 
-  repeatCount_(1),
   iterations_(0),
   curVector_(0),
-  activeOutputCount_(0),
-  hasCategoryOut_(false),
-  hasResetOut_(false),
   dataOut_(NTA_BasicType_Real32),
   categoryOut_(NTA_BasicType_Real32),
   resetOut_(NTA_BasicType_Real32),
-  filename_(""),
   scalingMode_("none"),
   recentFile_("")
 {
-  activeOutputCount_ = params.getScalar("activeOutputCount")->getValue<NTA_UInt32>();
-  if (params.contains("hasCategoryOut"))
-    hasCategoryOut_ =
-      params.getScalar("hasCategoryOut")->getValue<NTA_UInt32>() == 1;
-  if (params.contains("hasResetOut"))
-    hasResetOut_ =
-      params.getScalar("hasResetOut")->getValue<NTA_UInt32>() == 1;
-  if (params.contains("inputFile"))
-    filename_ = *params.getString("inputFile");
-  if (params.contains("repeatCount"))
-    repeatCount_ = params.getScalar("repeatCount")->getValue<NTA_UInt32>();
+  activeOutputCount_ = params.getScalarT<UInt32>("activeOutputCount", 0);
+  hasCategoryOut_ = (params.getScalarT<UInt32>("hasCategoryOut", 0) == 1);
+  hasResetOut_ = (params.getScalarT<UInt32>("hasResetOut", 0) == 1);
+  filename_ = params.getString("inputFile","");
+  repeatCount_ = params.getScalarT<UInt32>("repeatCount", 1);
 }
 
 VectorFileSensor::VectorFileSensor(BundleIO& bundle, Region* region) :
@@ -96,9 +86,9 @@ VectorFileSensor::VectorFileSensor(BundleIO& bundle, Region* region) :
 void VectorFileSensor::initialize()
 {
   NTA_CHECK(region_ != nullptr);
-  dataOut_ = region_->getOutputData("dataOut");
-  categoryOut_ = region_->getOutputData("categoryOut");
-  resetOut_ = region_->getOutputData("resetOut");
+  dataOut_ = region_->getOutput("dataOut")->getData();
+  categoryOut_ = region_->getOutput("categoryOut")->getData();
+  resetOut_ = region_->getOutput("resetOut")->getData();
 
   if (dataOut_.getCount() != activeOutputCount_)
   {
@@ -247,7 +237,7 @@ std::string VectorFileSensor::executeCommand(const std::vector<std::string>& arg
 
   else if (command == "dump")
   {
-    nupic::Byte message[256];
+    char message[256];
     Size n = ::sprintf(message,
       "VectorFileSensor isLabeled = %d repeatCount = %d vectorCount = %d iterations = %d\n",
       vectorFile_.isLabeled(), (int) repeatCount_, (int) vectorFile_.vectorCount(), (int) iterations_);
@@ -285,8 +275,7 @@ std::string VectorFileSensor::executeCommand(const std::vector<std::string>& arg
 
     NTA_CHECK(argCount <= 5) << "VectorFileSensor: too many arguments";
 
-
-    OFStream f(filename.c_str());
+    std::ofstream f(filename.c_str());
     if (hasEnd)
       vectorFile_.saveVectors(f, dataOut_.getCount(), format, begin, end);
     else
@@ -463,7 +452,7 @@ void VectorFileSensor::seek(int n)
   iterations_ = 0;
   curVector_ = n - 1;
   //circular-buffer, reached one end of vector/line, continue fro the other
-  if (n - 1 <= 0) curVector_ = static_cast<NTA_UInt32>((NTA_Size)vectorFile_.vectorCount() - 1);
+  if (n - 1 <= 0) curVector_ = static_cast<UInt32>((Size)vectorFile_.vectorCount() - 1);
 }
 
 size_t VectorFileSensor::getNodeOutputElementCount(const std::string& outputName)
@@ -474,22 +463,20 @@ size_t VectorFileSensor::getNodeOutputElementCount(const std::string& outputName
 
 void VectorFileSensor::serialize(BundleIO& bundle)
 {
-  std::ofstream & f = bundle.getOutputStream("vfs");
+  std::ostream & f = bundle.getOutputStream();
   f << repeatCount_ << " "
     << activeOutputCount_ << " "
     << filename_ << " "
     << scalingMode_ << " ";
-  f.close();
 }
 
 void VectorFileSensor::deserialize(BundleIO& bundle)
 {
-  std::ifstream& f = bundle.getInputStream("vfs");
+  std::istream& f = bundle.getInputStream();
   f >> repeatCount_
     >> activeOutputCount_
     >> filename_
     >> scalingMode_;
-  f.close();
 }
 
 Spec* VectorFileSensor::createSpec()

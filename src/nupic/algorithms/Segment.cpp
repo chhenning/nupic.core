@@ -27,6 +27,7 @@
 #include <set>
 #include <sstream>
 #include <algorithm> // sort
+#include <tuple>
 
 #include <nupic/utils/Random.hpp>
 #include <nupic/utils/Log.hpp>
@@ -58,7 +59,7 @@ Segment::Segment(InSynapses  _s, Real frequency, bool seqSegFlag,
   : _totalActivations(1),
     _positiveActivations(1),
     _lastActiveIteration(0),
-    _lastPosDutyCycle(1.0 / iteration),
+    _lastPosDutyCycle((Real)(1.0 / iteration)),
     _lastPosDutyCycleIteration(iteration),
     _seqSegFlag(seqSegFlag),
     _frequency(frequency),
@@ -91,7 +92,20 @@ Segment& Segment::operator=(const Segment& o)
   return *this;
 }
 
-
+//--------------------------------------------------------------------------------
+bool Segment::operator==(const Segment &other) const {
+  if (_totalActivations != other._totalActivations ||
+      _positiveActivations != other._positiveActivations ||
+      _lastActiveIteration != other._lastActiveIteration ||
+      !nearlyEqual(_lastPosDutyCycle, other._lastPosDutyCycle) ||
+      _lastPosDutyCycleIteration  !=  other._lastPosDutyCycleIteration ||
+      _seqSegFlag != other._seqSegFlag || 
+      !nearlyEqual(_frequency, other._frequency) ||
+      _nConnected != other._nConnected) {
+    return false;
+  }
+  return _synapses == other._synapses;
+}
 
 //--------------------------------------------------------------------------------
 Segment::Segment(const Segment& o)
@@ -173,7 +187,7 @@ Real Segment::dutyCycle(UInt iteration, bool active, bool readOnly)
   }
 
   // Update duty cycle
-  dutyCycle = pow((Real64) (1.0 - alpha), (Real64)age) * _lastPosDutyCycle;
+  dutyCycle = (Real)pow((Real64) (1.0 - alpha), (Real64)age) * _lastPosDutyCycle;
   if (active)
     dutyCycle += alpha;
 
@@ -455,13 +469,14 @@ void Segment::print(std::ostream& outStream, UInt nCellsPerCol) const
       outStream << _synapses[i];
     }
     if (i < _synapses.size() -1)
-      std::cout << " ";
+      outStream << " ";
   }
+  outStream << std::endl;
 }
 
-namespace nupic{
-  namespace algorithms {
-    namespace Cells4 {
+namespace nupic {
+namespace algorithms {
+namespace Cells4 {
 
       std::ostream& operator<<(std::ostream& outStream, const Segment& seg)
       {
@@ -475,8 +490,7 @@ namespace nupic{
         return outStream;
       }
 
-      std::ostream& operator<<(
-          std::ostream& outStream, const CStateIndexed& cstate)
+      std::ostream& operator<<( std::ostream& outStream, const CStateIndexed& cstate)
       {
         cstate.print(outStream);
         return outStream;

@@ -80,7 +80,7 @@ Segment Connections::createSegment(CellIdx cell)
   }
   else
   {
-    segment = segments_.size();
+    segment = (Segment)segments_.size();
     segments_.push_back(SegmentData());
     segmentOrdinals_.push_back(0);
   }
@@ -114,7 +114,7 @@ Synapse Connections::createSynapse(Segment segment,
   }
   else
   {
-    synapse.flatIdx = synapses_.size();
+    synapse.flatIdx = (UInt)synapses_.size();
     synapses_.push_back(SynapseData());
     synapseOrdinals_.push_back(0);
   }
@@ -269,7 +269,7 @@ SegmentIdx Connections::idxOnCellForSegment(Segment segment) const
   const vector<Segment>& segments = segmentsForCell(cellForSegment(segment));
   const auto it = std::find(segments.begin(), segments.end(), segment);
   NTA_ASSERT(it != segments.end());
-  return std::distance(segments.begin(), it);
+  return (SegmentIdx)std::distance(segments.begin(), it);
 }
 
 void Connections::mapSegmentsToCells(
@@ -304,7 +304,7 @@ const SynapseData& Connections::dataForSynapse(Synapse synapse) const
 
 UInt32 Connections::segmentFlatListLength() const
 {
-  return segments_.size();
+  return (UInt)segments_.size();
 }
 
 bool Connections::compareSegments(Segment a, Segment b) const
@@ -413,40 +413,32 @@ void Connections::computeActivity(
   }
 }
 
-template<typename FloatType>
-static void saveFloat_(std::ostream& outStream, FloatType v)
-{
-  outStream << std::setprecision(std::numeric_limits<FloatType>::max_digits10)
-            << v
-            << " ";
-}
 
 void Connections::save(std::ostream& outStream) const
 {
+  outStream << std::setprecision(std::numeric_limits<Real32>::max_digits10);
+  outStream << std::setprecision(std::numeric_limits<Real64>::max_digits10);
+
   // Write a starting marker.
   outStream << "Connections" << endl;
-  outStream << Connections::VERSION << endl;
+  outStream << VERSION << endl;
 
-  outStream << cells_.size() << " "
-            << endl;
+  outStream << cells_.size() << " " << endl;
 
-  for (CellData cellData : cells_)
-  {
-    const vector<Segment>& segments = cellData.segments;
+  for (CellData cellData : cells_) {
+    const vector<Segment> &segments = cellData.segments;
     outStream << segments.size() << " ";
 
-    for (Segment segment : segments)
-    {
-      const SegmentData& segmentData = segments_[segment];
+    for (Segment segment : segments) {
+      const SegmentData &segmentData = segments_[segment];
 
       const vector<Synapse>& synapses = segmentData.synapses;
       outStream << synapses.size() << " ";
 
-      for (Synapse synapse : synapses)
-      {
-        const SynapseData& synapseData = synapses_[synapse];
+      for (Synapse synapse : synapses) {
+        const SynapseData &synapseData = synapses_[synapse];
         outStream << synapseData.presynapticCell << " ";
-        saveFloat_(outStream, synapseData.permanence);
+        outStream << synapseData.permanence << " ";
       }
       outStream << endl;
     }
@@ -465,9 +457,9 @@ void Connections::load(std::istream& inStream)
   NTA_CHECK(marker == "Connections");
 
   // Check the saved version.
-  UInt version;
+  int version;
   inStream >> version;
-  NTA_CHECK(version <= Connections::VERSION);
+  NTA_CHECK(version <= 2);
 
   // Retrieve simple variables
   UInt numCells;
@@ -478,18 +470,15 @@ void Connections::load(std::istream& inStream)
   // This logic is complicated by the fact that old versions of the Connections
   // serialized "destroyed" segments and synapses, which we now ignore.
   cells_.resize(numCells);
-  for (UInt cell = 0; cell < numCells; cell++)
-  {
-    CellData& cellData = cells_[cell];
+  for (UInt cell = 0; cell < numCells; cell++) {
+    CellData &cellData = cells_[cell];
 
     UInt numSegments;
     inStream >> numSegments;
 
-    for (SegmentIdx j = 0; j < numSegments; j++)
-    {
+    for (SegmentIdx j = 0; j < numSegments; j++) {
       bool destroyedSegment = false;
-      if (version < 2)
-      {
+      if (version < 2) {
         inStream >> destroyedSegment;
       }
 
@@ -498,9 +487,8 @@ void Connections::load(std::istream& inStream)
         SegmentData segmentData = {};
         segmentData.cell = cell;
 
-        if (!destroyedSegment)
-        {
-          segment = segments_.size();
+        if (!destroyedSegment) {
+          segment = (Segment)segments_.size();
           cellData.segments.push_back(segment);
           segments_.push_back(segmentData);
           segmentOrdinals_.push_back(nextSegmentOrdinal_++);
@@ -546,27 +534,27 @@ void Connections::load(std::istream& inStream)
 
 CellIdx Connections::numCells() const
 {
-  return cells_.size();
+  return (CellIdx) cells_.size();
 }
 
 UInt Connections::numSegments() const
 {
-  return segments_.size() - destroyedSegments_.size();
+  return (UInt)(segments_.size() - destroyedSegments_.size());
 }
 
 UInt Connections::numSegments(CellIdx cell) const
 {
-  return cells_[cell].segments.size();
+  return (UInt)cells_[cell].segments.size();
 }
 
 UInt Connections::numSynapses() const
 {
-  return synapses_.size() - destroyedSynapses_.size();
+  return (UInt)(synapses_.size() - destroyedSynapses_.size());
 }
 
 UInt Connections::numSynapses(Segment segment) const
 {
-  return segments_[segment].synapses.size();
+  return (UInt)segments_[segment].synapses.size();
 }
 
 bool Connections::operator==(const Connections &other) const

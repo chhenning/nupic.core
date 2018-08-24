@@ -67,15 +67,16 @@ void Region::setParameterReal64(const std::string& name, Real64 value)
   impl_->setParameterReal64(name, (Int64)-1, value);
 }
 
-void Region::setParameterHandle(const std::string& name, Handle value)
-{
-  impl_->setParameterHandle(name, (Int64)-1, value);
-}
-
 void Region::setParameterBool(const std::string& name, bool value)
 {
   impl_->setParameterBool(name, (Int64)-1, value);
 }
+void Region::setParameterHandle(const std::string& name, void* value)
+{
+  impl_->setParameterHandle(name, (Int64)-1, value);
+}
+
+
 
 
 // getParameter
@@ -95,7 +96,6 @@ UInt32 Region::getParameterUInt32(const std::string& name) const
   return impl_->getParameterUInt32(name, (Int64)-1);
 }
 
-
 UInt64 Region::getParameterUInt64(const std::string& name) const
 {
   return impl_->getParameterUInt64(name, (Int64)-1);
@@ -111,53 +111,27 @@ Real64 Region::getParameterReal64(const std::string& name) const
   return impl_->getParameterReal64(name, (Int64)-1);
 }
 
-
-/* CHH Python
-pybind11::object Region::getParameterHandle(const std::string& name) const
-{
-  return impl_->getParameterHandle(name, (Int64)-1);
-}
-*/
-
-
 bool Region::getParameterBool(const std::string& name) const
 {
   return impl_->getParameterBool(name, (Int64)-1);
 }
 
 
-// array parameters
-
-
-void
-Region::getParameterArray(const std::string& name, Array & array) const
+// array parameters with copy.
+// Target array is copied into the given array.  If the Array's buffer is
+// not allocated, one is provided. The copy is needed to 
+// 1) make sure the buffer value does not change after being returned.
+// 2) the caller cannot change the buffer being used by the region.
+// 3) element type conversion occures during the copy.
+// 4) the caller controls the buffer allocation (may come from a language interface)
+void Region::getParameterArray(const std::string& name, Array & array) const
 {
-  size_t count = impl_->getParameterArrayCount(name, (Int64)(-1));
-  // Make sure we have a buffer to put the data in
-  if (array.getBuffer() != nullptr) 
-  {
-    // Buffer has already been allocated. Make sure it is big enough
-    if (array.getCount() > count)
-      NTA_THROW << "getParameterArray -- supplied buffer for parameter " << name
-                << " can hold " << array.getCount() 
-                << " elements but parameter count is "
-                << count;
-  } else {
-    array.allocateBuffer(count);
-  }
-
   impl_->getParameterArray(name, (Int64)-1, array);
-
 }
-
 
 void
 Region::setParameterArray(const std::string& name, const Array & array)
 {
-  // We do not check the array size here because it would be
-  // expensive -- involving a check against the nodespec, 
-  // and only usable in the rare case that the nodespec specified
-  // a fixed size. Instead, the implementation can check the size. 
   impl_->setParameterArray(name, (Int64)-1, array);
 }
 

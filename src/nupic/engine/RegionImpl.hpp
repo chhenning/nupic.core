@@ -39,11 +39,10 @@
 #include <vector>
 
 #include <nupic/ntypes/ObjectModel.hpp> // IWriteBuffer
-
 namespace nupic
 {
 
-  struct Spec;
+  class Spec;
   class Region;
   class Dimensions;
   class Input;
@@ -67,27 +66,24 @@ namespace nupic
 
     /* ------- Convenience methods  that access region data -------- */
 
-    const std::string& getType() const;
+    std::string getType() const;
 
-    const std::string& getName() const;
+    std::string getName() const;
 
-    const NodeSet& getEnabledNodes() const;
 
     /* ------- Parameter support in the base class. ---------*/
     // The default implementation of all of these methods goes through
     // set/getParameterFromBuffer, which is compatible with NuPIC 1.
-    // RegionImpl subclasses may override for higher performance.
+    // Normally RegionImpl subclasses will override these methods as needed
+    // To handle the parameters they have defined in their spec.
 
-    virtual Int32 getParameterInt32(const std::string& name, Int64 index);
+    virtual Int32  getParameterInt32(const std::string& name, Int64 index);
     virtual UInt32 getParameterUInt32(const std::string& name, Int64 index);
-    virtual Int64 getParameterInt64(const std::string& name, Int64 index);
+    virtual Int64  getParameterInt64(const std::string& name, Int64 index);
     virtual UInt64 getParameterUInt64(const std::string& name, Int64 index);
     virtual Real32 getParameterReal32(const std::string& name, Int64 index);
     virtual Real64 getParameterReal64(const std::string& name, Int64 index);
-    /* CHH Python
-    virtual pybind11::object getParameterHandle(const std::string& name, Int64 index);
-    */
-    virtual bool getParameterBool(const std::string& name, Int64 index);
+    virtual bool   getParameterBool(const std::string& name, Int64 index);
 
     virtual void setParameterInt32(const std::string& name, Int64 index, Int32 value);
     virtual void setParameterUInt32(const std::string& name, Int64 index, UInt32 value);
@@ -95,8 +91,9 @@ namespace nupic
     virtual void setParameterUInt64(const std::string& name, Int64 index, UInt64 value);
     virtual void setParameterReal32(const std::string& name, Int64 index, Real32 value);
     virtual void setParameterReal64(const std::string& name, Int64 index, Real64 value);
-    virtual void setParameterHandle(const std::string& name, Int64 index, Handle value);
     virtual void setParameterBool(const std::string& name, Int64 index, bool value);
+  // Only used for internal C++ testing
+    virtual void setParameterHandle(const std::string &name, Int64 index, void *value);
 
     virtual void getParameterArray(const std::string& name, Int64 index, Array & array);
     virtual void setParameterArray(const std::string& name, Int64 index, const Array & array);
@@ -146,26 +143,23 @@ namespace nupic
      * This method is called only by the typed getParameter*
      * methods in the RegionImpl base class
      *
-     * Must be implemented by all subclasses.
      *
      * @param index A node index. (-1) indicates a region-level parameter
      *
      */
-    virtual void getParameterFromBuffer(const std::string& name,
-                                        Int64 index,
-                                        IWriteBuffer& value) = 0;
+    virtual void getParameterFromBuffer(const std::string &name, Int64 index,
+                                        IWriteBuffer &value);
+
 
     /**
      * Set a parameter from a read buffer.
      * This method is called only by the RegionImpl base class
      * type-specific setParameter* methods
-     * Must be implemented by all subclasses.
      *
      * @param index A node index. (-1) indicates a region-level parameter
      */
-    virtual void setParameterFromBuffer(const std::string& name,
-                              Int64 index,
-                              IReadBuffer& value) = 0;
+    virtual void setParameterFromBuffer(const std::string &name, Int64 index,
+                                        IReadBuffer &value);
 
 
 
@@ -206,17 +200,22 @@ namespace nupic
     /// getSerializationXStream a second time automatically closes the
     /// first stream. Any open stream is closed when serialize() returns.
     // ---
-    std::ostream& getSerializationOutputStream(const std::string& name);
-    std::istream& getSerializationInputStream(const std::string& name);
-    std::string getSerializationPath(const std::string& name);
+    //std::ostream& getSerializationOutputStream(const std::string& name);
+    //std::istream& getSerializationInputStream(const std::string& name);
+    //std::string getSerializationPath(const std::string& name);
 
     // These methods provide access to inputs and outputs
     // They raise an exception if the named input or output is
     // not found.
-    const Input* getInput(const std::string& name);
-    const Output* getOutput(const std::string& name);
+    Input* getInput(const std::string& name) const;
+    Output* getOutput(const std::string& name) const;
 
-    const Dimensions& getDimensions();
+    template <typename T>
+    T getParameter(const std::string &name, Int64 index,NTA_BasicType type);
+
+    template <typename T>
+    void setParameter(const std::string &name, Int64 index, T value, NTA_BasicType type);
+
 
   };
 

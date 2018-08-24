@@ -32,8 +32,8 @@
 //----------------------------------------------------------------------
 
 #include <vector>
+#include <fstream>
 #include <nupic/types/Types.hpp>
-#include <nupic/os/FStream.hpp>
 
 namespace nupic
 {
@@ -67,7 +67,7 @@ namespace nupic
     ///           5        # Reads in a big-endian float32 binary file
     ///           6        # Reads in a big-endian IDX binary file
     void appendFile(const std::string &fileName,
-                    NTA_Size expectedElementCount,
+                    Size expectedElementCount,
                     UInt32 fileFormat);
     
     /// Retrieve i'th vector, apply scaling and copy result into output
@@ -135,7 +135,7 @@ namespace nupic
     std::vector<std::string> vectorLabels_;   // a string label for each vector
     
     //------------------- Utility routines 
-    void appendCSVFile(IFStream &inFile, Size expectedElementCount);
+    void appendCSVFile(std::istream &inFile, Size expectedElementCount);
 
     /// Read vectors from a binary file.
     void appendFloat32File(const std::string &filename, Size expectedElements, 

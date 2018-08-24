@@ -25,10 +25,10 @@
 #else
 #include <string.h>
 #endif
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <numeric> // std::accumulate
-#include <fstream>
 #include <sstream>
 
 #include <nupic/engine/TestNode.hpp>
@@ -53,17 +53,20 @@ namespace nupic
 
   {
     // params for get/setParameter testing
+
+    // Populate the parameters with values.
     int32Param_ = params.getScalarT<Int32>("int32Param", 32);
     uint32Param_ = params.getScalarT<UInt32>("uint32Param", 33);
     int64Param_ = params.getScalarT<Int64>("int64Param", 64);
     uint64Param_ = params.getScalarT<UInt64>("uint64Param", 65);
-    real32Param_ = params.getScalarT<Real32>("real32Param", 32.1);
+    real32Param_ = params.getScalarT<Real32>("real32Param", 32.1f);
     real64Param_ = params.getScalarT<Real64>("real64Param", 64.1);
     boolParam_ = params.getScalarT<bool>("boolParam", false);
+    outputElementCount_ = params.getScalarT<UInt32>("count", 2);
 
     shouldCloneParam_ = params.getScalarT<UInt32>("shouldCloneParam", 1) != 0;
 
-    stringParam_ = *params.getString("stringParam");
+    stringParam_ = params.getString("stringParam");
 
     real32ArrayParam_.resize(8);
     for (size_t i = 0; i < 8; i++)
@@ -95,7 +98,6 @@ namespace nupic
     unclonedInt64ArrayParam_[0] = v;
 
     // params used for computation
-    outputElementCount_ = 2;
     delta_ = 1;
     iter_ = 0;
 
@@ -118,11 +120,26 @@ namespace nupic
     if (computeCallback_ != nullptr)
       computeCallback_(getName());
 
-    const Array & outputArray = bottomUpOut_->getData();
-    NTA_CHECK(outputArray.getCount() == nodeCount_ * outputElementCount_);
+    Array & outputArray = bottomUpOut_->getData();
+    NTA_CHECK(outputArray.getCount() == outputElementCount_);
     NTA_CHECK(outputArray.getType() == NTA_BasicType_Real64);
     Real64 *baseOutputBuffer = (Real64*) outputArray.getBuffer();
 
+    // There is only 1 node now and no dimensions. So that reduces to the
+    // outputArray being initialized from bottomUpIn_
+    // dek 2018
+    const Array& nodeInput = bottomUpIn_->getData();
+    Real64* inputBuffer = (Real64*)nodeInput.getBuffer();
+
+    // output[n] = node + sum(inputs) + (n-1) * delta
+    Real64 sum = 0.0;
+    for (size_t j = 0; j < nodeInput.getCount(); j++)
+      sum += inputBuffer[j];
+
+    baseOutputBuffer[0] = nupic::Real64(nodeInput.getCount() + iter_);
+    for (size_t i = 1; i < outputElementCount_; i++)
+      baseOutputBuffer[i] = 0 + sum + (i - 1) * delta_;
+    /*****
     // See TestNode.hpp for description of the computation
     std::vector<Real64> nodeInput;
     Real64* nodeOutputBuffer;
@@ -139,6 +156,7 @@ namespace nupic
       for (size_t i = 1; i < outputElementCount_; i++)
         nodeOutputBuffer[i] = node + sum + (i-1)*delta_;
     }
+    **/
 
     iter_++;
 
@@ -150,17 +168,31 @@ namespace nupic
   {
     auto ns = new Spec;
 
+    ns->description = "TestNode. Used as a plain simple plugin Region for unit tests only. "
+      "This is not useful for any real applicaton.";
+    ns->singleNodeOnly = true;
+
+
     /* ---- parameters ------ */
 
     ns->parameters.add(
-      "int32Param",
+      "count",
       ParameterSpec(
-        "Int32 scalar parameter",  // description
-        NTA_BasicType_Int32,
+        "Buffer size override for bottomUpOut Output",  // description
+        NTA_BasicType_UInt32,
         1,                         // elementCount
         "",                        // constraints
-        "32",                      // defaultValue
+        "2",                      // defaultValue
         ParameterSpec::ReadWriteAccess));
+
+    ns->parameters.add(
+      "int32Param",
+      ParameterSpec("Int32 scalar parameter", // description
+       NTA_BasicType_Int32,
+       1,    // elementCount
+       "",   // constraints
+       "32", // defaultValue
+       ParameterSpec::ReadWriteAccess));
 
     ns->parameters.add(
       "uint32Param",
@@ -373,7 +405,9 @@ namespace nupic
                                         Int64 index,
                                         IWriteBuffer& value)
   {
-    if (name == "int32Param") {
+    if (name == "count") {
+      value.write(outputElementCount_);
+    } else if (name == "int32Param") {
       value.write(int32Param_);
     } else if (name == "uint32Param") {
       value.write(uint32Param_);
@@ -439,7 +473,9 @@ namespace nupic
                                         Int64 index,
                                         IReadBuffer& value)
   {
-    if (name == "int32Param") {
+    if (name == "count") {
+      value.read(outputElementCount_);
+    } else if (name == "int32Param") {
       value.read(int32Param_);
     } else if (name == "uint32Param") {
       value.read(uint32Param_);
@@ -539,7 +575,6 @@ namespace nupic
 
   void TestNode::initialize()
   {
-    nodeCount_ = getDimensions().getCount();
     bottomUpOut_ = getOutput("bottomUpOut");
     bottomUpIn_ = getInput("bottomUpIn");
 
@@ -574,7 +609,7 @@ namespace nupic
     {
       return outputElementCount_;
     }
-    NTA_THROW << "TestNode::getOutputSize -- unknown output " << outputName;
+    NTA_THROW << "TestNode::getNodeOutputElementCount() -- unknown output " << outputName;
   }
 
   std::string TestNode::executeCommand(const std::vector<std::string>& args, Int64 index)
@@ -638,11 +673,11 @@ namespace nupic
 
   void TestNode::serialize(BundleIO& bundle)
   {
+    // we are now only allowed one file for storing a RegionImpl.
+    // Just use the stream provided.
+    std::ostream& f = bundle.getOutputStream();
     {
-      std::ofstream& f = bundle.getOutputStream("main");
-      // There is more than one way to do this. We could serialize to YAML, which
-      // would make a readable format, or we could serialize directly to the stream
-      // Choose the easier one.
+      // There is more than one way to do this. We serialize directly to the stream
       f << "TestNode-v2" << " "
         << nodeCount_ << " "
         << int32Param_ << " "
@@ -671,31 +706,27 @@ namespace nupic
         name << "unclonedInt64ArrayParam[" << i << "]";
         arrayOut(f, unclonedInt64ArrayParam_[i], name.str());
       }
-      f.close();
+
+      // save the output buffers
+      f << "outputs [";
+      std::map<std::string, Output *> outputs = region_->getOutputs();
+      for (auto iter : outputs) {
+        const Array &outputBuffer = iter.second->getData();
+        if (outputBuffer.getCount() != 0) {
+          f << iter.first << " ";
+          outputBuffer.save(f);
+        }
+      }
+      f << "] "; // end of all output buffers
     }  // main file
 
-
-    // auxilliary file using stream
-    {
-      std::ofstream& f = bundle.getOutputStream("aux");
-      f << "This is an auxilliary file!\n";
-      f.close();
-    }
-
-    // auxilliary file using path
-    {
-      std::string path = bundle.getPath("aux2");
-      std::ofstream f(path.c_str());
-      f << "This is another auxilliary file!\n";
-      f.close();
-    }
   }
 
 
   void TestNode::deserialize(BundleIO& bundle)
   {
+    std::istream& f = bundle.getInputStream();
     {
-      std::ifstream& f = bundle.getInputStream("main");
       // There is more than one way to do this. We could serialize to YAML, which
       // would make a readable format, or we could serialize directly to the stream
       // Choose the easier one.
@@ -728,10 +759,10 @@ namespace nupic
 
       f >> shouldCloneParam_;
 
-      std::string label;
-      f >> label;
-      if (label != "unclonedArray")
-        NTA_THROW << "Missing label for uncloned array. Got '" << label << "'";
+      std::string tag;
+      f >> tag;
+      if (tag != "unclonedArray")
+        NTA_THROW << "Missing label for uncloned array. Got '" << tag << "'";
       size_t vecsize;
       f >> vecsize;
       unclonedInt64ArrayParam_.clear();
@@ -742,37 +773,24 @@ namespace nupic
         name << "unclonedInt64ArrayParam[" << i << "]";
         arrayIn(f, unclonedInt64ArrayParam_[i], name.str());
       }
-      f.close();
-    }  // main file
 
-    // auxilliary file using stream
-    {
-      std::ifstream& f = bundle.getInputStream("aux");
-      char line1[100];
-      f.read(line1, 100);
-      line1[f.gcount()] = '\0';
-      if (std::string(line1) != "This is an auxilliary file!\n")
-      {
-        NTA_THROW << "Invalid auxilliary serialization file for TestNode";
-      }
-      f.close();
-    }
+	    // Restore outputs
+	    f >> tag;
+	    NTA_CHECK(tag == "outputs");
+	    f.ignore(1);
+	    NTA_CHECK(f.get() == '['); // start of outputs
 
-    // auxilliary file using path
-    {
-      std::string path = bundle.getPath("aux2");
-      std::ifstream f(path.c_str());
-      char line1[100];
-      f.read(line1, 100);
-      line1[f.gcount()] = '\0';
-      if (std::string(line1) != "This is another auxilliary file!\n")
-      {
-        NTA_THROW << "Invalid auxilliary2 serialization file for TestNode";
-      }
+	    while (true) {
+	      f >> tag;
+	      f.ignore(1);
+	      if (tag == "]")
+	        break;
+	      getOutput(tag)->getData().load(f);
+	    }
+	  }
 
-      f.close();
-    }
   }
 
 
-}
+
+} // namespace nupic

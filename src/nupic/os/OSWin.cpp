@@ -35,8 +35,6 @@
 #include <nupic/os/Directory.hpp>
 #include <nupic/os/Env.hpp>
 #include <nupic/utils/Log.hpp>
-#include <nupic/os/DynamicLibrary.hpp>
-#include <boost/shared_ptr.hpp>
 
 
 using namespace nupic;

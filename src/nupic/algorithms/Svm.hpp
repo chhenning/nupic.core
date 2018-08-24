@@ -78,6 +78,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <nupic/math/Math.hpp>
 #include <nupic/math/StlIo.hpp>
 #include <nupic/utils/Random.hpp>
+#include <nupic/types/Serializable.hpp>
 
 namespace nupic {
 namespace algorithms {
@@ -106,7 +107,8 @@ template <typename label_type, typename feature_type> struct sample {
 };
 
 //------------------------------------------------------------------------------
-class svm_problem {
+class svm_problem : public Serializable 
+{
 public:
   typedef float label_type;
   typedef float feature_type;
@@ -179,7 +181,7 @@ public:
     std::copy(x_[i], x_[i] + n_dims(), sv);
   }
 
-  int persistent_size() const;
+  size_t persistent_size() const;
   void save(std::ostream &outStream) const;
   void load(std::istream &inStream);
 
@@ -201,7 +203,8 @@ private:
 };
 
 //------------------------------------------------------------------------------
-struct svm_problem01 {
+struct svm_problem01  : public Serializable
+{
   typedef float label_type;
   typedef int feature_type;
 
@@ -232,11 +235,11 @@ struct svm_problem01 {
 
   inline ~svm_problem01() {
     if (recover_)
-      for (int i = 0; i != size(); ++i)
+      for (size_t i = 0; i != size(); ++i)
         delete[] x_[i];
   }
 
-  inline int size() const { return (int)x_.size(); }
+  inline size_t size() const { return x_.size(); }
   inline int n_dims() const { return n_dims_; }
   inline int nnz(int i) const { return nnz_[i]; }
 
@@ -259,7 +262,7 @@ struct svm_problem01 {
     while (x_it != x_end) {
       float val = *x_it;
       if (!nearlyZero(val, threshold_)) {
-        buf_[nnz] = x_it - x;
+        buf_[nnz] = (int)(x_it - x);
         ++nnz;
       }
       ++x_it;
@@ -289,14 +292,14 @@ struct svm_problem01 {
       sv[x_[i][k]] = 1;
   }
 
-  int persistent_size() const;
+  size_t persistent_size() const;
   void save(std::ostream &outStream) const;
   void load(std::istream &inStream);
 
   void print() const {
     std::cout << "Size = " << size() << " n dims = " << n_dims() << std::endl;
 
-    for (int i = 0; i != size(); ++i) {
+    for (size_t i = 0; i != size(); ++i) {
       std::cout << y_[i] << ": " << nnz_[i] << ": ";
       for (int j = 0; j != nnz_[i]; ++j)
         std::cout << x_[i][j] << " ";
@@ -324,7 +327,8 @@ struct decision_function {
  * n_sv = n_sv[n_class], number of SVs for each class
  * probA, probB = [n_class*(n_class-1)/2]
  */
-class svm_model {
+class svm_model  : public Serializable
+{
 public:
   int n_dims_;
   float *sv_mem;
@@ -345,7 +349,7 @@ public:
 
   ~svm_model();
 
-  int persistent_size() const;
+  size_t persistent_size() const;
   void save(std::ostream &outStream) const;
   void load(std::istream &inStream);
   void print() const;
@@ -668,8 +672,8 @@ private:
 
 public:
   QMatrix01(const svm_problem01 &prob, float g, int kernel, int cache_size)
-      : l(prob.size()), n(prob.n_dims()), kernel_function(nullptr), gamma(g),
-        nnz(prob.nnz_), x(prob.x_.begin(), prob.x_.end()),
+      : l((int)prob.size()), n(prob.n_dims()), kernel_function(nullptr),
+        gamma(g), nnz(prob.nnz_), x(prob.x_.begin(), prob.x_.end()),
         x_square(new float[l]), y(new signed char[l]),
         cache(new Cache<float>(l, (long int)(cache_size * (1 << 20)))),
         QD(new float[l]) {
@@ -757,7 +761,7 @@ struct svm_parameter {
   std::vector<int> weight_label;
   std::vector<float> weight;
 
-  int persistent_size() const;
+  size_t persistent_size() const;
   void save(std::ostream &outStream) const;
   void load(std::istream &inStream);
 
@@ -784,7 +788,9 @@ struct svm_01_traits {
 };
 
 //------------------------------------------------------------------------------
-template <typename svm_traits = svm_std_traits> class svm {
+template <typename svm_traits = svm_std_traits> 
+class svm  : public Serializable
+{
 public:
   typedef typename svm_traits::problem_type problem_type;
   typedef typename svm_traits::q_matrix_type q_matrix_type;
@@ -869,7 +875,7 @@ public:
 
   float cross_validation(int);
 
-  int persistent_size() const;
+  size_t persistent_size() const;
   void save(std::ostream &outStream) const;
   void load(std::istream &inStream);
 
@@ -893,7 +899,8 @@ private:
 };
 
 //------------------------------------------------------------------------------
-class svm_dense {
+class svm_dense  : public Serializable
+{
   svm<svm_std_traits> svm_;
 
 public:
@@ -945,7 +952,7 @@ public:
     return svm_.cross_validation(n_fold);
   }
 
-  inline int persistent_size() const { return svm_.persistent_size(); }
+  inline size_t persistent_size() const { return svm_.persistent_size(); }
 
   inline void save(std::ostream &outStream) const { svm_.save(outStream); }
 
@@ -953,7 +960,8 @@ public:
 };
 
 //------------------------------------------------------------------------------
-class svm_01 {
+class svm_01  : public Serializable
+{
   svm<svm_01_traits> svm_;
 
 public:
@@ -1004,7 +1012,7 @@ public:
     return svm_.cross_validation(n_fold);
   }
 
-  inline int persistent_size() const { return svm_.persistent_size(); }
+  inline size_t persistent_size() const { return svm_.persistent_size(); }
 
   inline void save(std::ostream &outStream) const { svm_.save(outStream); }
 

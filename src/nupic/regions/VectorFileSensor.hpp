@@ -33,12 +33,11 @@
 
 #include <vector>
 
-#include <nupic/types/Types.h>
-#include <nupic/os/FStream.hpp>
 #include <nupic/engine/RegionImpl.hpp>
 #include <nupic/ntypes/Array.hpp>
 #include <nupic/ntypes/ArrayRef.hpp>
 #include <nupic/regions/VectorFile.hpp>
+#include <nupic/types/Types.h>
 
 namespace nupic
 {
@@ -300,21 +299,21 @@ namespace nupic
     virtual std::string executeCommand(const std::vector<std::string>& args, Int64 index) override;
 
   private:
-    void closeFile();
-    void openFile(const std::string& filename);
-
-  private:
-    NTA_UInt32 repeatCount_;       // Repeat count for output vectors
-    NTA_UInt32 iterations_;        // Number of times compute() has been called
-    NTA_UInt32 curVector_;         // The index of the vector currently being output
-    NTA_UInt32 activeOutputCount_; // The number of elements in each input vector
+    UInt32 repeatCount_;       // Repeat count for output vectors
+    UInt32 iterations_;        // Number of times compute() has been called
+    UInt32 curVector_;         // The index of the vector currently being output
+    UInt32 activeOutputCount_; // The number of elements in each input vector
     bool       hasCategoryOut_;    // determine if a category output is needed
     bool       hasResetOut_;       // determine if a reset output is needed
     nupic::VectorFile vectorFile_;   // Container class for the vectors
 
-    ArrayRef dataOut_;
-    ArrayRef categoryOut_;
-    ArrayRef resetOut_;
+
+    // These are the instanceses of the Output buffers
+    // They contain buffers shared with the Output objects.
+    Array dataOut_;
+    Array categoryOut_;
+    Array resetOut_;
+
     std::string filename_;          // Name of the output file
 
     std::string scalingMode_;

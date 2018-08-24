@@ -25,10 +25,11 @@
 #include <iostream>
 #include <limits>
 #include <map>
-#include <string>
 #include <sstream>
-#include <vector>
 #include <stdio.h>
+#include <string>
+#include <vector>
+
 
 #include <nupic/algorithms/ClassifierResult.hpp>
 #include <nupic/algorithms/SDRClassifier.hpp>
@@ -39,7 +40,7 @@ using namespace std;
 
 namespace nupic
 {
-  namespace algorithms 
+  namespace algorithms
   {
     namespace sdr_classifier
     {
@@ -63,7 +64,7 @@ namespace nupic
         // There can be great overhead reallocating the array every time a new
         // input is seen, especially if we start at (0, 0). The client will
         // usually know what is the final maxInputIdx (typically the number
-        // of columns?), and we can have heuristics using the encoder's 
+        // of columns?), and we can have heuristics using the encoder's
         // settings to get an good approximate of the maxBucketIdx, thus having
         // to reallocate this matrix only a few times, even never if we use
         // lower bounds
@@ -104,7 +105,7 @@ namespace nupic
           }
         }
 
-        // if input pattern has greater index than previously seen, update 
+        // if input pattern has greater index than previously seen, update
         // maxInputIdx and augment weight matrix with zero padding
         if (patternNZ.size() > 0)
         {
@@ -135,7 +136,7 @@ namespace nupic
             Real64 actValue = actValueList[categoryI];
             // if bucket is greater, update maxBucketIdx_ and augment weight
             // matrix with zero-padding
-            if (bucketIdx > maxBucketIdx_) 
+            if (bucketIdx > maxBucketIdx_)
             {
               maxBucketIdx_ = bucketIdx;
               for (const auto& step : steps_)
@@ -159,7 +160,7 @@ namespace nupic
               actualValues_[bucketIdx] =
                   ((1.0 - actValueAlpha_) * actualValues_[bucketIdx]) +
                   (actValueAlpha_ * actValue);
-            }            
+            }
           }
 
           // compute errors and update weights
@@ -174,7 +175,7 @@ namespace nupic
             // update weights
             if (binary_search(steps_.begin(), steps_.end(), nSteps))
             {
-              vector<Real64> error = calculateError_(bucketIdxList, 
+              vector<Real64> error = calculateError_(bucketIdxList,
                 learnPatternNZ, nSteps);
               Matrix& weights = weightMatrix_.at(nSteps);
               for (auto& bit : learnPatternNZ)
@@ -187,7 +188,7 @@ namespace nupic
 
       }
 
-      auto SDRClassifier::persistentSize() const
+      size_t SDRClassifier::persistentSize() const
       {
         stringstream s;
         s.flags(ios::scientific);
@@ -196,7 +197,7 @@ namespace nupic
         return s.str().size();
       }
 
-      void SDRClassifier::infer_(const vector<UInt>& patternNZ, 
+      void SDRClassifier::infer_(const vector<UInt>& patternNZ,
         const vector<Real64>&  actValue, ClassifierResult* result)
       {
         // add the actual values to the return value. For buckets that haven't
@@ -223,7 +224,7 @@ namespace nupic
 
         for (auto nSteps = steps_.begin(); nSteps!=steps_.end(); ++nSteps)
         {
-          vector<Real64>* likelihoods = result->createVector(*nSteps, 
+          vector<Real64>* likelihoods = result->createVector(*nSteps,
             maxBucketIdx_ + 1, 0.0);
           for (auto& bit : patternNZ)
           {
@@ -239,7 +240,7 @@ namespace nupic
         }
       }
 
-      vector<Real64> SDRClassifier::calculateError_(const vector<UInt>& bucketIdxList, 
+      vector<Real64> SDRClassifier::calculateError_(const vector<UInt>& bucketIdxList,
         const vector<UInt> patternNZ, UInt step)
       {
         // compute predicted likelihoods
@@ -264,6 +265,19 @@ namespace nupic
         return likelihoods;
       }
 
+      void SDRClassifier::softmax_(vector<Real64>::iterator begin,
+                             vector<Real64>::iterator end) {
+        vector<Real64>::iterator maxItr = max_element(begin, end);
+        for (auto itr = begin; itr != end; ++itr) {
+          *itr -= *maxItr;
+        }
+        range_exp(1.0, begin, end);
+        Real64 sum = accumulate(begin, end, 0.0);
+        for (auto itr = begin; itr != end; ++itr) {
+          *itr /= sum;
+        }
+      }
+
       UInt SDRClassifier::version() const
       {
         return version_;
@@ -279,7 +293,7 @@ namespace nupic
         verbosity_ = verbosity;
       }
 
-      auto SDRClassifier::getAlpha() const
+      Real64 SDRClassifier::getAlpha() const
       {
         return alpha_;
       }
@@ -560,6 +574,6 @@ namespace nupic
 
           return true;
       }
-    }
-  }
-}
+} // namespace sdr_classifier
+} // namespace algorithms
+} // namespace nupic
